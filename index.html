@@ -1101,16 +1101,7 @@ function toast(msg) {
   clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-// ── SERVICE WORKER ──────────────────────────────────────────────
-async function regSW() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.register("./sw.js"); await navigator.serviceWorker.ready; setInterval(() => { reg.active?.postMessage({ type: "CHECK" }); }, 60000);
-    setInterval(() => {
-      navigator.serviceWorker.ready.then(sw => sw.active?.postMessage({ type: 'CHECK' }));
-    }, 60000);
-  } catch(e) { console.warn('SW:', e); }
-}
+// SERVICE WORKER desactivado
 
 // ── WIRE EVENTS ─────────────────────────────────────────────────
 document.getElementById('btnNew').addEventListener('click', () => openForm());
@@ -1191,7 +1182,6 @@ async function boot() {
     document.getElementById('btnNotif').classList.add('on');
     await scheduleAllUndated(); // activate every-3-day reminders for undated pendientes
   }
-  regSW();
   render();
 }
 
