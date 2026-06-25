@@ -1,17 +1,17 @@
-const CACHE = 'agendazoa-v2';
+const CACHE = 'agendazoa-v3';
+const BASE = '/AGENDA-ZOA-/';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/agendazoa/index.html'])));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([BASE + 'index.html'])));
   self.skipWaiting();
 });
 self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('/agendazoa/index.html')))
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match(BASE + 'index.html')))
   );
 });
 
-// ── DB helpers ─────────────────────────────────────────────────
 let _db = null;
 function openDB() {
   if (_db) return Promise.resolve(_db);
@@ -42,22 +42,18 @@ async function kvSet(key, val) {
   });
 }
 
-// ── Check and fire due alarms ──────────────────────────────────
 async function checkAlarms() {
-  // If app is open let it handle — SW only fires when app is closed
   const cs = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
   if (cs.length > 0) return;
-
-  const alarms = await kvGet('alarms') || [];
+  const alarms = (await kvGet('alarms')) || [];
   const now = Date.now();
   let changed = false;
-
   for (const a of alarms) {
     if (!a.fired && a.at <= now) {
       await self.registration.showNotification(a.title, {
         body: a.body,
-        icon: '/agendazoa/icons/icon-192.png',
-        badge: '/agendazoa/icons/icon-72.png',
+        icon: BASE + 'icons/icon-192.png',
+        badge: BASE + 'icons/icon-72.png',
         tag: a.id,
         vibrate: [300, 100, 300, 100, 300],
         requireInteraction: false,
@@ -70,24 +66,15 @@ async function checkAlarms() {
   if (changed) await kvSet('alarms', alarms);
 }
 
-self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'CHECK') checkAlarms();
-});
-
-// Periodic background sync — fires even when app is closed (Android Chrome supports this)
-self.addEventListener('periodicsync', e => {
-  if (e.tag === 'alarms') e.waitUntil(checkAlarms());
-});
-
-// Fallback: use push event if periodic sync not supported
+self.addEventListener('message', e => { if (e.data?.type === 'CHECK') checkAlarms(); });
+self.addEventListener('periodicsync', e => { if (e.tag === 'alarms') e.waitUntil(checkAlarms()); });
 self.addEventListener('push', e => { e.waitUntil(checkAlarms()); });
-
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
       if (cs.length) { cs[0].focus(); return; }
-      return clients.openWindow('/agendazoa/');
+      return clients.openWindow(BASE);
     })
   );
 });
